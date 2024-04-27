@@ -1,0 +1,86 @@
+- name: Download cfssl
+  ansible.builtin.get_url:
+    url: "{{ cfssl_download_url }}"
+    dest: /usr/local/bin/cfssl
+    mode: "775"
+  when: "'k8s_utils' in group_names"
+
+- name: Download cfssljson
+  ansible.builtin.get_url:
+    url: "{{ cfssljson_download_url }}"
+    dest: /usr/local/bin/cfssljson
+    mode: "775"
+  when: "'k8s_utils' in group_names"
+
+- name: Create SSL Directory
+  ansible.builtin.file:
+    path: /opt/k8s/ssl/
+    state: directory
+    owner: 1000
+    group: k8s
+  when: "'k8s_utils' in group_names or 'k8s_masters' in group_names"
+
+- name: Copy ssl requirement
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  loop:
+    - { src: ca_config.json, dest: /opt/k8s/ssl/ca_config.json }
+    - { src: ca_csr.json, dest: /opt/k8s/ssl/ca_csr.json }
+    - { src: kubernetes-csr.json, dest: /opt/k8s/ssl/kubernetes-csr.json }
+    - { src: etcd-csr.json, dest: /opt/k8s/ssl/etcd-csr.json }
+  when: "'k8s_utils' in group_names"
+
+- name: Generate CA cert
+  ansible.builtin.shell: |
+      cfssl gencert -initca /opt/k8s/ssl/ca_csr.json | cfssljson -bare ca
+  args:
+    chdir: /opt/k8s/ssl/
+  when: "'k8s_utils' in group_names"
+
+- name: Generate K8S certs with IPs
+  ansible.builtin.shell: |
+      cfssl gencert \
+      -ca=/opt/k8s/ssl/ca.pem \
+      -ca-key=/opt/k8s/ssl/ca-key.pem \
+      -config=/opt/k8s/ssl/ca_config.json \
+      -hostname={{ k8s_master_servers | map(attribute='ansible_default_ipv4.address') | join(',') }},{{ k8s_utils_servers | map(attribute='ansible_default_ipv4.address') | join(',') }},127.0.0.1,kubernetes.default \
+      -profile=kubernetes /opt/k8s/ssl/kubernetes-csr.json | \
+      cfssljson -bare kubernetes
+  args:
+    chdir: /opt/k8s/ssl/
+  when: "'k8s_utils' in group_names"
+
+- name: Generate etcd certs with IPs
+  ansible.builtin.shell: |
+      cfssl gencert \
+      -ca=/opt/k8s/ssl/ca.pem \
+      -ca-key=/opt/k8s/ssl/ca-key.pem \
+      -config=/opt/k8s/ssl/ca_config.json \
+      -hostname={{ k8s_master_servers | map(attribute='ansible_default_ipv4.address') | join(',') }},{{ k8s_master_servers | map(attribute='ansible_hostname') | join(',') }},127.0.0.1,kubernetes.default \
+      -profile=etcd /opt/k8s/ssl/etcd-csr.json | \
+      cfssljson -bare etcd
+  args:
+    chdir: /opt/k8s/ssl/
+  when: "'k8s_utils' in group_names"
+
+- name: Slurp file content on Utils host
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  register: slurped_files
+  delegate_to: Utils01
+  loop:
+    - /opt/k8s/ssl/ca.pem
+    - /opt/k8s/ssl/kubernetes.pem
+    - /opt/k8s/ssl/kubernetes-key.pem
+    - /opt/k8s/ssl/etcd.pem
+    - /opt/k8s/ssl/etcd-key.pem
+    
+
+- name: Create files from slurped content on all hosts
+  ansible.builtin.copy:
+    content: "{{ item['content'] | b64decode }}"
+    dest: "/opt/k8s/ssl/{{ item['item'] | basename }}"
+    mode: "0644"
+  loop: "{{ slurped_files.results }}"
+  when: "'k8s_masters' in group_names"

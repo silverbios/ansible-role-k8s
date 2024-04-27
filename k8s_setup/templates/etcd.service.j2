@@ -1,0 +1,35 @@
+[Install]
+WantedBy=multi-user.target
+
+[Unit]
+Description=etcd service
+Wants=network-online.target
+After=network.target
+Documentation=https://github.com/coreos
+
+[Service]
+ExecStart=/opt/etcd/etcd \
+  --name {{ ansible_default_ipv4.address }} \
+  --cert-file=/opt/k8s/ssl/etcd.pem \
+  --key-file=/opt/k8s/ssl/etcd-key.pem \
+  --peer-cert-file=/opt/k8s/ssl/etcd.pem \
+  --peer-key-file=/opt/k8s/ssl/etcd-key.pem \
+  --trusted-ca-file=/opt/k8s/ssl/ca.pem \
+  --peer-trusted-ca-file=/opt/k8s/ssl/ca.pem \
+  --peer-client-cert-auth \
+  --client-cert-auth \
+  --initial-advertise-peer-urls https://{{ ansible_default_ipv4.address }}:{{ etcd_peer_port }} \
+  --listen-peer-urls https://{{ ansible_default_ipv4.address }}:{{ etcd_peer_port }} \
+  --listen-client-urls https://{{ ansible_default_ipv4.address }}:{{ etcd_client_port }},http://127.0.0.1:{{ etcd_client_port }} \
+  --advertise-client-urls https://{{ ansible_default_ipv4.address }}:{{ etcd_client_port }} \
+  --initial-cluster-token etcd-cluster-0 \
+  --initial-cluster {% for host in groups['k8s_masters'] %}{{ hostvars[host].ansible_default_ipv4.address }}=https://{{ hostvars[host].ansible_hostname }}:{{ etcd_peer_port }}{% if not loop.last %},{% endif %}{% endfor %} \
+  --data-dir=/var/lib/etcd
+Restart=on-failure
+Type=notify
+RestartSec=5
+User={{ etcd_user }}
+Group={{ etcd_group }}
+
+[Install]
+WantedBy=multi-user.target

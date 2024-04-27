@@ -1,0 +1,66 @@
+- name: Install apt transport HTTPS and CA certificates
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - apt-transport-https
+    - ca-certificates
+    - acl
+  
+- name: Get OS release name
+  ansible.builtin.command: lsb_release -cs
+  changed_when: false
+  register: lsb_rel
+
+- name: Add Docker APT repository
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: [deb]
+    uris: https://download.docker.com/linux/ubuntu
+    signed_by: https://download.docker.com/linux/ubuntu/gpg
+    suites: "{{ lsb_rel.stdout }}"
+    components: [stable]
+    state: present
+    enabled: true
+
+- name: Add Kubernetes APT repository
+  ansible.builtin.deb822_repository:
+    name: kubernetes
+    types: [deb]
+    uris: "https://pkgs.k8s.io/core:/stable:/{{ k8s_repo_version }}/deb"
+    signed_by: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+    suites: [/]
+    state: present
+    enabled: true
+
+- name: Add Helm APT repository
+  ansible.builtin.deb822_repository:
+    name: helm
+    types: [deb]
+    uris: https://baltocdn.com/helm/stable/debian/
+    signed_by: https://baltocdn.com/helm/signing.asc
+    suites: [all]
+    components: [main]
+    state: present
+    enabled: true
+  when: "'k8s_masters' in group_names"
+
+- name: Add PPA HAProxy
+  ansible.builtin.apt_repository:
+    validate_certs: false
+    update_cache: true
+    repo: "ppa:vbernat/haproxy-{{ haproxy_repo_version }}"
+    state: present
+  when: "'k8s_utils' in group_names"
+
+- name: Install Helm package
+  ansible.builtin.apt:
+    name: helm
+    state: present
+    update_cache: true
+  when: "'k8s_masters' in group_names"
+
+- name: Update apt package index
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: full

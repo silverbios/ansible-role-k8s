@@ -1,0 +1,100 @@
+- name: Generate kubeadm config file
+  ansible.builtin.template:
+    src: kubeadm-config.yaml.j2
+    dest: /home/k8s/kubeadm-config.yaml
+  when: "'k8s_masters' in group_names"
+
+- name: Initialize the cluster
+  ansible.builtin.shell: kubeadm init --config=/home/k8s/kubeadm-config.yaml >> /home/k8s/cluster_initialized.txt
+  args:
+    chdir: $HOME
+    creates: cluster_initialized.txt
+  #delegate_to: Master01
+  when: inventory_hostname == 'Master01'
+
+- name: "Create pki folder"
+  file:
+    path: /etc/kubernetes/pki
+    state: directory
+    mode: 0640
+    owner: root
+    group: root
+  when: "'k8s_masters' in group_names"
+
+- name: Get file permissions on master01
+  ansible.builtin.stat:
+    path: "/etc/kubernetes/pki/{{ item }}"
+  register: file_stat
+  when: inventory_hostname == 'Master01'
+  with_items:
+    - ca.crt
+    - ca.key
+    - sa.key
+    - sa.pub
+    - front-proxy-ca.crt 
+    - front-proxy-ca.key
+
+- name: fetching the file from node 1 and saving in local
+  ansible.builtin.fetch:
+    src: "/etc/kubernetes/pki/{{ item.item }}"
+    dest: "/tmp/{{ item.item }}"
+    flat: yes
+  when: inventory_hostname == 'Master01'
+  loop: "{{ file_stat.results }}"
+
+- name: Set global fact for file permissions on master01
+  set_fact:
+    global_file_stat: "{{ file_stat.results }}"
+  when: inventory_hostname == 'Master01'
+
+- name: Copying files from Controller to master-node
+  copy:
+    src: "/tmp/{{ item.item }}"
+    dest: "/etc/kubernetes/pki/{{ item.item }}"
+    mode: "{{ item.stat.mode }}"
+  when: "'k8s_masters' in group_names and inventory_hostname != 'Master01'"
+  loop: "{{ hostvars['Master01'].global_file_stat }}"
+
+
+
+- name: add another master node the cluster
+  ansible.builtin.shell: kubeadm init --config=/home/k8s/kubeadm-config.yaml >> /home/k8s/cluster_initialized.txt
+  args:
+    chdir: $HOME
+    creates: cluster_initialized.txt
+  when: "'k8s_masters' in group_names and inventory_hostname != 'Master01'"
+
+- name: Create .kube directory
+  ansible.builtin.file:
+    path: /home/k8s/.kube/
+    owner: k8s
+    group: k8s
+    mode: "0755"
+    state: directory
+  when: "'k8s_masters' in group_names"
+
+- name: Copy admin.conf to user's kube config
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/k8s/.kube/config
+    remote_src: true
+    mode: "0600"
+    owner: k8s
+  when: "'k8s_masters' in group_names"
+
+- name: Get join command
+  ansible.builtin.command: kubeadm token create --print-join-command
+  register: join_command_raw
+  run_once: true
+  when: "'k8s_masters' in group_names"
+
+- name: Set join command
+  ansible.builtin.set_fact:
+    join_command: "{{ join_command_raw.stdout_lines[0] }}"
+
+- name: Join cluster
+  ansible.builtin.shell: "{{ hostvars['Utils01'].join_command }} >> node_joined.txt"
+  args:
+    chdir: $HOME
+    creates: node_joined.txt
+  when: "'k8s_workers' in group_names"

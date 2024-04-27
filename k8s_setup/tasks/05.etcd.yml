@@ -1,0 +1,46 @@
+- name: Create etcd config directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ etcd_conf_dir }}"
+    mode: "0750"
+    owner: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
+  when: "'k8s_masters' in group_names"
+
+- name: Create etcd data directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ etcd_data_dir }}"
+    mode: "0750}"
+    owner: "{{ etcd_user }}"
+    group: "{{ etcd_group }}"
+  when: "'k8s_masters' in group_names"
+
+- name: Extract etcd
+  ansible.builtin.unarchive:
+    src: "{{ etcd_download_url }}"
+    dest: /opt/etcd/
+    creates: /opt/etcd/etcdctl
+    remote_src: yes
+    extra_opts: [--strip-components=1]
+  when: "'k8s_masters' in group_names"
+  
+- name: Configure etcd
+  ansible.builtin.template:
+    src: etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+    owner: "root"
+    group: "root"
+    mode: "0644"
+  when: "'k8s_masters' in group_names"
+  notify:
+    - daemon_reload
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start etcd
+  ansible.builtin.service:
+    name: etcd
+    enabled: true
+    state: started

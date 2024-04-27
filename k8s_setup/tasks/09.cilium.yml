@@ -1,0 +1,22 @@
+- name: Install cilium Chart
+  become: true
+  become_user: k8s
+  kubernetes.core.helm:
+    name: cilium
+    update_repo_cache: True
+    namespace: kube-system
+    chart_ref: cilium/cilium
+    set_values:
+      - value: kubeProxyReplacement=true
+        value_type: string
+      - value: k8sServiceHost={{ hostvars['Utils01']['ansible_host'] }}
+        value_type: string
+      - value: externalIPs.enabled=true
+        value_type: string
+      - value: k8sServicePort=6443
+        value_type: string
+      - value: bpf.hostLegacyRouting=false
+        value_type: string
+      - value: bpf.masquerade=true
+        value_type: string
+  when: "'k8s_masters' in group_names"

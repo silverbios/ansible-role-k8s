@@ -1,0 +1,27 @@
+- name: Install HAProxy package
+  ansible.builtin.apt:
+    name: "haproxy={{ haproxy_version }}"
+    state: present
+  when: "'k8s_utils' in group_names"
+
+- name: Create directory HAProxy Directory
+  ansible.builtin.file:
+    path: /etc/haproxy/conf.d
+    state: directory
+  when: "'k8s_utils' in group_names"
+
+- name: Configure HAProxy K8S
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/conf.d/k8s.cfg
+  when: "'k8s_utils' in group_names"
+
+- name: Support subdirectory for HAProxy Cofiguration file
+  ansible.builtin.lineinfile:
+    path: /etc/default/haproxy
+    regexp: ^#?CONFIG="/etc/haproxy/haproxy.cfg"
+    line: CONFIG="/etc/haproxy/haproxy.cfg -f /etc/haproxy/conf.d"
+    backrefs: true
+  notify:
+    - restart_haproxy
+  when: "'k8s_utils' in group_names"
