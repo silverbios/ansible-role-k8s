@@ -1,0 +1,32 @@
+---
+# handlers file for k8s_setup
+- name: daemon_reload
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: restart_containerd
+  ansible.builtin.systemd:
+    state: restarted
+    name: containerd.service
+    enabled: yes
+  
+- name: restart_kubelet
+  ansible.builtin.systemd:
+    state: restarted
+    name: kubelet.service
+    enabled: yes
+
+- name: restart_haproxy
+  ansible.builtin.systemd:
+    state: restarted
+    name: haproxy.service
+    enabled: yes
+
+- name: restart_etcd
+  ansible.builtin.systemd:
+    state: restarted
+    name: etcd.service
+    enabled: yes
+
+- name: reload_sysctl
+  command: sysctl --system

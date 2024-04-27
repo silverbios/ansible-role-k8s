@@ -1,0 +1,27 @@
+- name: Add conf for containerd
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/containerd.conf
+    content: |
+      overlay
+      br_netfilter
+
+- name: Install Containerd.io package
+  ansible.builtin.apt:
+    name: containerd.io
+    update_cache: true
+    state: present
+
+- name: Configure containerd
+  ansible.builtin.shell: |
+    mkdir -p /etc/containerd
+    containerd config default | tee /etc/containerd/config.toml
+    sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start etcd
+  ansible.builtin.service:
+    name: containerd
+    enabled: true
+    state: started

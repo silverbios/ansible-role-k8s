@@ -1,0 +1,12 @@
+- hosts: "k8s_masters, k8s_workers, k8s_utils"
+  become: yes
+  become_user: root
+  become_method: sudo
+  gather_facts: yes
+  vars_prompt:
+    - name: "ansible_become_pass"
+      prompt: "Enter sudo password"
+      private: yes
+
+  roles:
+    - k8s_setup

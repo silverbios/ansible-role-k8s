@@ -1,0 +1,13 @@
+frontend kubernetes
+bind {{ ansible_default_ipv4.address }}:{{ frontend_bind_port }}
+option tcplog
+mode tcp
+default_backend kubernetes-master-nodes
+
+backend kubernetes-master-nodes
+mode tcp
+balance roundrobin
+option tcp-check
+{% for server in k8s_master_servers %}
+server {{ server.inventory_hostname }} {{ server.ansible_host }}:{{ frontend_bind_port }}
+{% endfor %}

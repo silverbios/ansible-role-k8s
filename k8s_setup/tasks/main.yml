@@ -1,0 +1,50 @@
+---
+# tasks file for k8s_setup
+- name: Gather Kubernetes master nodes info
+  ansible.builtin.set_fact:
+    k8s_master_servers: "{{ groups['k8s_masters'] | map('extract', hostvars) | list }}"
+
+- name: Gather Kubernetes master nodes info
+  ansible.builtin.set_fact:
+    k8s_utils_servers: "{{ groups['k8s_utils'] | map('extract', hostvars) | list }}"
+
+- name: Set fact for a random host from my_group
+  ansible.builtin.set_fact:
+    random_master: "{{ groups['k8s_masters'] | random }}"
+  run_once: true
+
+- name: Include apt_repos.yml
+  include_tasks: 01.apt_repos.yml
+  tags: apt_repos
+
+- name: Include certs.yml
+  include_tasks: 02.certs.yml
+  tags: certs
+
+- name: Include k8s_requirement.yml
+  include_tasks: 03.k8s_requirement.yml
+  tags: k8s_req
+
+- name: Include cri.yml
+  include_tasks: 04.cri.yml
+  tags: cri
+
+- name: Include etcd.yml
+  include_tasks: 05.etcd.yml
+  tags: etcd
+
+- name: Include haproxy.yml
+  include_tasks: 06.haproxy.yml
+  tags: haproxy
+
+- name: Include install-k8s-package.yml
+  include_tasks: 07.install-k8s-package.yml
+  tags: k8s_package
+
+- name: Include initialize_cluster_and_join.yml
+  include_tasks: 08.initialize_cluster_and_join.yml
+  tags: k8s_init
+
+- name: Include cilium.yml
+  include_tasks: 09.cilium.yml
+  tags: cni

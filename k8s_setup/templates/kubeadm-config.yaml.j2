@@ -1,0 +1,30 @@
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+containerLogMaxFiles: 2
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+skipPhases:
+  - addon/kube-proxy
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: stable
+controlPlaneEndpoint: "{{ hostvars[groups['k8s_utils'][0]]['ansible_host'] }}:6443"
+etcd:
+  external:
+    endpoints:
+{% for host in groups['k8s_masters'] %}
+    - https://{{ hostvars[host]['inventory_hostname'] }}:2379
+{% endfor %}
+    caFile: /opt/k8s/ssl/ca.pem
+    certFile: /opt/k8s/ssl/kubernetes.pem
+    keyFile: /opt/k8s/ssl/kubernetes-key.pem
+networking:
+  podSubnet: "{{ k8s_subnet }}"
+apiServer:
+  certSANs:
+    {% for host in groups['k8s_utils'] %}
+    - {{ hostvars[host]['ansible_host'] }}
+    {% endfor %}

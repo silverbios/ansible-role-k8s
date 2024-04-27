@@ -1,0 +1,25 @@
+all:
+  children:
+    k8s_masters:
+      hosts:
+        Master01:
+          ansible_host: 
+        Master02:
+          ansible_host: 
+        Master03:
+          ansible_host: 
+    k8s_workers:
+      hosts:
+        Worker01:
+          ansible_host: 
+        Worker02:
+          ansible_host: 
+        Worker03:
+          ansible_host: 
+    k8s_utils:
+      hosts:
+        Utils01:
+          ansible_host: 
+
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'          

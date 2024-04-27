@@ -1,0 +1,59 @@
+
+- name: Create the 'k8s' user
+  ansible.builtin.user:
+    name: k8s
+    append: "yes"
+    state: present
+    createhome: "yes"
+    shell: /bin/bash
+
+- name: Create the 'k8s' user
+  ansible.builtin.user:
+    name: etcd
+    append: "yes"
+    state: present
+    createhome: "no"
+    shell: /bin/false
+  when: "'k8s_masters' in group_names"
+
+- name: Allow 'k8s' to have passwordless sudo
+  copy:
+    dest: /etc/sudoers.d/k8s
+    content: |
+      "k8s ALL=(ALL) NOPASSWD: ALL"
+    owner: root
+    group: root
+    mode: 0640
+    validate: visudo -cf %s
+
+- name: Create ssh-client-keypair for client
+  openssh_keypair:
+    path: ~/.ssh/id_ed25519_k8s.pub
+    type: ed25519
+
+- name: Set up authorized keys for the k8s user
+  authorized_key: user=k8s key="{{ item }}"
+  with_file:
+    - ~/.ssh/id_ed25519_k8s.pub
+
+- name: Disable swap
+  ansible.builtin.command: swapoff -a
+
+- name: Ensure swap is disabled in /etc/fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: ^\s*\S+\s+none\s+swap\s+sw\s+0\s+0
+    line: "#\\1"
+    backrefs: true
+
+- name: Configure sysctl for k8s
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-kubernetes.conf
+    content: |
+      net.bridge.bridge-nf-call-iptables  = 1
+      net.ipv4.ip_forward                 = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.core.default_qdisc = fq
+      net.ipv4.tcp_congestion_control = bbr
+    notify:
+      - reload_sysctl # first suitable task for reload sysctl

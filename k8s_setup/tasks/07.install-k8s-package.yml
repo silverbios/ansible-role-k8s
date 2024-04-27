@@ -1,0 +1,23 @@
+- name: Install Kubernetes Master packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    update_cache: true
+    state: present
+  loop:
+    - "kubelet={{ k8s_version }}"
+    - "kubeadm={{ k8s_version }}"
+    - "kubectl={{ k8s_version }}"
+  when: "'k8s_masters' in group_names"
+
+- name: Install Kubernetes Worker packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - "kubelet={{ k8s_version }}"
+    - "kubeadm={{ k8s_version }}"
+  when: "'k8s_workers' in group_names"
+
+- name: Exclude kube components from apt upgrades
+  ansible.builtin.shell: |
+    apt-mark hold kubelet kubeadm kubectl containerd
