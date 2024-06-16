@@ -25,3 +25,7 @@
     name: containerd
     enabled: true
     state: started
+
+- name: Exclude kube components from apt upgrades
+  ansible.builtin.shell: |
+    apt-mark hold containerd

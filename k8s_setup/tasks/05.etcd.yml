@@ -11,7 +11,7 @@
   ansible.builtin.file:
     state: directory
     path: "{{ etcd_data_dir }}"
-    mode: "0750}"
+    mode: "0750"
     owner: "{{ etcd_user }}"
     group: "{{ etcd_group }}"
   when: "'k8s_masters' in group_names"
@@ -44,3 +44,4 @@
     name: etcd
     enabled: true
     state: started
+  when: "'k8s_masters' in group_names"

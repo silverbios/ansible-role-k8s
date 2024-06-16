@@ -17,13 +17,13 @@
   include_tasks: 01.apt_repos.yml
   tags: apt_repos
 
-- name: Include certs.yml
-  include_tasks: 02.certs.yml
-  tags: certs
-
 - name: Include k8s_requirement.yml
-  include_tasks: 03.k8s_requirement.yml
+  include_tasks: 02.k8s_requirement.yml
   tags: k8s_req
+
+- name: Include certs.yml
+  include_tasks: 03.certs.yml
+  tags: certs
 
 - name: Include cri.yml
   include_tasks: 04.cri.yml

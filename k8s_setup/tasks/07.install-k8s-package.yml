@@ -18,6 +18,13 @@
     - "kubeadm={{ k8s_version }}"
   when: "'k8s_workers' in group_names"
 
+- name: Install Helm package
+  ansible.builtin.apt:
+    name: helm
+    state: present
+    update_cache: true
+  when: "'k8s_masters' in group_names"
+
 - name: Exclude kube components from apt upgrades
   ansible.builtin.shell: |
-    apt-mark hold kubelet kubeadm kubectl containerd
+    apt-mark hold kubelet kubeadm kubectl
