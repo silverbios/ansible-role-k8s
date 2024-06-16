@@ -1,3 +1,10 @@
+- name: Ensure each host is in /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ item }}"
+    state: present
+  loop: "{{ groups['all'] }}"
+  when: hostvars[item]['ansible_default_ipv4']['address'] is defined
 
 - name: Create the 'k8s' user
   ansible.builtin.user:
@@ -20,7 +27,7 @@
   copy:
     dest: /etc/sudoers.d/k8s
     content: |
-      "k8s ALL=(ALL) NOPASSWD: ALL"
+      k8s ALL=(ALL) NOPASSWD: ALL
     owner: root
     group: root
     mode: 0640
@@ -42,8 +49,8 @@
 - name: Ensure swap is disabled in /etc/fstab
   ansible.builtin.lineinfile:
     path: /etc/fstab
-    regexp: ^\s*\S+\s+none\s+swap\s+sw\s+0\s+0
-    line: "#\\1"
+    regexp: '^\s*\S+\s+none\s+swap\s+sw\s+0\s+0'
+    line: '#\\1'
     backrefs: true
 
 - name: Configure sysctl for k8s
@@ -55,5 +62,5 @@
       net.bridge.bridge-nf-call-ip6tables = 1
       net.core.default_qdisc = fq
       net.ipv4.tcp_congestion_control = bbr
-    notify:
-      - reload_sysctl # first suitable task for reload sysctl
+    mode: '0644'
+  notify: reload_sysctl # first suitable task for reload sysctl
