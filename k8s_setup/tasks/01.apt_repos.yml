@@ -53,13 +53,6 @@
     state: present
   when: "'k8s_utils' in group_names"
 
-- name: Install Helm package
-  ansible.builtin.apt:
-    name: helm
-    state: present
-    update_cache: true
-  when: "'k8s_masters' in group_names"
-
 - name: Update apt package index
   ansible.builtin.apt:
     update_cache: true
