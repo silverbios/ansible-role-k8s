@@ -1,4 +1,4 @@
-- name: Install apt transport HTTPS and CA certificates
+- name: Install DEB dependencies
   ansible.builtin.apt:
     name: "{{ item }}"
     state: present
@@ -6,6 +6,7 @@
     - apt-transport-https
     - ca-certificates
     - acl
+    - python3-kubernetes
   
 - name: Get OS release name
   ansible.builtin.command: lsb_release -cs
