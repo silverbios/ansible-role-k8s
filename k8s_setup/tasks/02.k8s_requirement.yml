@@ -1,5 +1,5 @@
 - name: Ensure each host is in /etc/hosts
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/hosts
     line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item]['ansible_hostname'] }}"
     state: present
@@ -24,7 +24,7 @@
   when: "'k8s_masters' in group_names"
 
 - name: Allow 'k8s' to have passwordless sudo
-  copy:
+  ansible.builtin.copy:
     dest: /etc/sudoers.d/k8s
     content: |
       k8s ALL=(ALL) NOPASSWD: ALL
@@ -34,7 +34,7 @@
     validate: visudo -cf %s
 
 - name: Create ssh-client-keypair for client
-  openssh_keypair:
+  ansible.builtin.openssh_keypair:
     path: ~/.ssh/id_ed25519_k8s.pub
     type: ed25519
 

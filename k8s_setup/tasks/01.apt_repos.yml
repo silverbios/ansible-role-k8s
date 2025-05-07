@@ -7,7 +7,7 @@
     - ca-certificates
     - acl
     - python3-kubernetes
-  
+
 - name: Get OS release name
   ansible.builtin.command: lsb_release -cs
   changed_when: false
