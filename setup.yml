@@ -1,8 +1,9 @@
-- hosts: "k8s_masters, k8s_workers, k8s_utils"
-  become: yes
+- name: Setup K8S MultiMaster Cluster
+  hosts: "k8s_masters, k8s_workers, k8s_utils"
+  become: true
   become_user: root
   become_method: sudo
-  gather_facts: yes
+  gather_facts: true
   vars_prompt:
     - name: "ansible_become_pass"
       prompt: "Enter sudo password"
