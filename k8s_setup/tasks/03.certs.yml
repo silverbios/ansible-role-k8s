@@ -3,6 +3,7 @@
     url: "{{ cfssl_download_url }}"
     dest: /usr/local/bin/cfssl
     mode: "775"
+    timeout: 180
   when: "'k8s_utils' in group_names"
 
 - name: Download cfssljson
@@ -10,6 +11,7 @@
     url: "{{ cfssljson_download_url }}"
     dest: /usr/local/bin/cfssljson
     mode: "775"
+    timeout: 180
   when: "'k8s_utils' in group_names"
 
 - name: Create SSL Directory
@@ -36,6 +38,7 @@
       cfssl gencert -initca /opt/k8s/ssl/ca_csr.json | cfssljson -bare ca
   args:
     chdir: /opt/k8s/ssl/
+    creates: /opt/k8s/ssl/ca.pem 
   when: "'k8s_utils' in group_names"
 
 - name: Generate K8S certs with IPs
@@ -49,6 +52,7 @@
       cfssljson -bare kubernetes
   args:
     chdir: /opt/k8s/ssl/
+    creates: /opt/k8s/ssl/kubernetes.pem
   when: "'k8s_utils' in group_names"
 
 - name: Generate etcd certs with IPs
@@ -62,13 +66,14 @@
       cfssljson -bare etcd
   args:
     chdir: /opt/k8s/ssl/
+    creates: /opt/k8s/ssl/etcd.pem
   when: "'k8s_utils' in group_names"
 
 - name: Slurp file content on Utils host
   ansible.builtin.slurp:
     src: "{{ item }}"
   register: slurped_files
-  delegate_to: Utils01
+  delegate_to: Utils01-Node
   loop:
     - /opt/k8s/ssl/ca.pem
     - /opt/k8s/ssl/kubernetes.pem
