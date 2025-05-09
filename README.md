@@ -1,7 +1,7 @@
 K8S-Multi-Master
 ================
 
-This role installs K8S 1.29 version with external etcd, which has a multi-master feature in K8S and redundancy for the etcd cluster with Cilium as CNI.
+This role installs Kubernetes version 1.33 with an external etcd cluster configured for high availability (multi-master setup), using Cilium as the CNI. Unlike traditional configurations that not require to disable swap instea, this setup takes advantage of managed swap for improved memory handling and system resilience.
 
 Requirements
 ------------
