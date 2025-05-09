@@ -5,12 +5,11 @@
   when: "'k8s_masters' in group_names"
 
 - name: Initialize the cluster
-  ansible.builtin.shell: kubeadm init --config=/home/k8s/kubeadm-config.yaml >> /home/k8s/cluster_initialized.txt
+  ansible.builtin.shell: kubeadm init --v=5 --config=/home/k8s/kubeadm-config.yaml >> /home/k8s/cluster_initialized.txt
   args:
     chdir: $HOME
     creates: cluster_initialized.txt
-  #delegate_to: Master01
-  when: inventory_hostname == 'Master01'
+  when: inventory_hostname == 'Master01-Node'
 
 - name: "Create pki folder"
   file:
@@ -21,17 +20,17 @@
     group: root
   when: "'k8s_masters' in group_names"
 
-- name: Get file permissions on master01
+- name: Get file permissions on Master01-Node
   ansible.builtin.stat:
     path: "/etc/kubernetes/pki/{{ item }}"
   register: file_stat
-  when: inventory_hostname == 'Master01'
+  when: inventory_hostname == 'Master01-Node'
   with_items:
     - ca.crt
     - ca.key
     - sa.key
     - sa.pub
-    - front-proxy-ca.crt 
+    - front-proxy-ca.crt
     - front-proxy-ca.key
 
 - name: fetching the file from node 1 and saving in local
@@ -39,30 +38,28 @@
     src: "/etc/kubernetes/pki/{{ item.item }}"
     dest: "/tmp/{{ item.item }}"
     flat: yes
-  when: inventory_hostname == 'Master01'
+  when: inventory_hostname == 'Master01-Node'
   loop: "{{ file_stat.results }}"
 
-- name: Set global fact for file permissions on master01
+- name: Set global fact for file permissions on Master01-Node
   set_fact:
     global_file_stat: "{{ file_stat.results }}"
-  when: inventory_hostname == 'Master01'
+  when: inventory_hostname == 'Master01-Node'
 
 - name: Copying files from Controller to master-node
-  copy:
+  ansible.builtin.copy:
     src: "/tmp/{{ item.item }}"
     dest: "/etc/kubernetes/pki/{{ item.item }}"
     mode: "{{ item.stat.mode }}"
-  when: "'k8s_masters' in group_names and inventory_hostname != 'Master01'"
-  loop: "{{ hostvars['Master01'].global_file_stat }}"
+  when: "'k8s_masters' in group_names and inventory_hostname != 'Master01-Node'"
+  loop: "{{ hostvars['Master01-Node'].global_file_stat }}"
 
-
-
-- name: add another master node the cluster
-  ansible.builtin.shell: kubeadm init --config=/home/k8s/kubeadm-config.yaml >> /home/k8s/cluster_initialized.txt
+- name: Add another master node the cluster
+  ansible.builtin.shell: kubeadm init --v=5 --config=/home/k8s/kubeadm-config.yaml >> /home/k8s/cluster_initialized.txt
   args:
     chdir: $HOME
     creates: cluster_initialized.txt
-  when: "'k8s_masters' in group_names and inventory_hostname != 'Master01'"
+  when: "'k8s_masters' in group_names and inventory_hostname != 'Master01-Node'"
 
 - name: Create .kube directory
   ansible.builtin.file:
@@ -82,18 +79,81 @@
     owner: k8s
   when: "'k8s_masters' in group_names"
 
+- name: Load current CoreDNS ConfigMap
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: ConfigMap
+    namespace: kube-system
+    name: coredns
+  register: coredns_config
+  become: true
+  become_user: k8s
+  when: inventory_hostname == 'Master01-Node'
+
+- name: Patch CoreDNS Corefile by replacing /etc/resolv.conf for better compatibility in KubeReplacement environment in cilium
+  set_fact:
+    patched_corefile: >-
+      {{
+        coredns_config.resources[0].data.Corefile
+        | replace('/etc/resolv.conf', '8.8.8.8 8.8.4.4')
+      }}
+  when:
+    - inventory_hostname == 'Master01-Node'
+
+- name: Apply patched Corefile back to ConfigMap
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: coredns
+        namespace: kube-system
+      data:
+        Corefile: "{{ patched_corefile }}"
+  become: true
+  become_user: k8s
+  when:
+    - inventory_hostname == 'Master01-Node'
+
+- name: Restart CoreDNS deployment to apply new Corefile
+  kubernetes.core.k8s:
+    kind: Deployment
+    namespace: kube-system
+    name: coredns
+    api_version: apps/v1
+    definition:
+      metadata:
+        annotations:
+          redeploy-ts: "{{ ansible_date_time.epoch }}"
+  become: true
+  become_user: k8s
+  when:
+    - inventory_hostname == 'Master01-Node'
+
 - name: Get join command
   ansible.builtin.command: kubeadm token create --print-join-command
   register: join_command_raw
+  delegate_to: Master01-Node
   run_once: true
+
+- name: Debug join command raw
+  ansible.builtin.debug:
+    var: join_command_raw
   when: "'k8s_masters' in group_names"
 
-- name: Set join command
+- name:  Set join command fact on all nodes
   ansible.builtin.set_fact:
     join_command: "{{ join_command_raw.stdout_lines[0] }}"
+  run_once: true
+
+- name: Debug join command for workers
+  ansible.builtin.debug:
+    msg: "Join command for worker node {{ inventory_hostname }}: {{ join_command }}"
+  when: "'k8s_workers' in group_names"
 
 - name: Join cluster
-  ansible.builtin.shell: "{{ hostvars['Utils01'].join_command }} >> node_joined.txt"
+  ansible.builtin.shell: "{{ join_command }} --v=5 >> node_joined.txt"
   args:
     chdir: $HOME
     creates: node_joined.txt
