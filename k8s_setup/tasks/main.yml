@@ -48,3 +48,19 @@
 - name: Include cilium.yml
   include_tasks: 09.cilium.yml
   tags: cni
+
+# - name: Include istio.yml
+#   include_tasks: 10.istio.yml
+#   tags: sidecar
+
+# - name: Include openebs.yml
+#   include_tasks: 11.openebs.yml
+#   tags: storage
+
+# - name: Include traefik.yml
+#   include_tasks: 12.traefik.yml
+#   tags: ingress-controller
+
+# - name: Include misc.yml
+#   include_tasks: 13.misc.yml
+#   tags: misc
