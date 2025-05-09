@@ -1,7 +1,6 @@
 - name: Install Kubernetes Master packages
   ansible.builtin.apt:
     name: "{{ item }}"
-    update_cache: true
     state: present
   loop:
     - "kubelet={{ k8s_version }}"
@@ -22,7 +21,6 @@
   ansible.builtin.apt:
     name: helm
     state: present
-    update_cache: true
   when: "'k8s_masters' in group_names"
 
 - name: Exclude kube components from apt upgrades
