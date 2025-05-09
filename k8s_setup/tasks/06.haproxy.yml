@@ -22,6 +22,11 @@
     regexp: ^#?CONFIG="/etc/haproxy/haproxy.cfg"
     line: CONFIG="/etc/haproxy/haproxy.cfg -f /etc/haproxy/conf.d"
     backrefs: true
-  notify:
-    - restart_haproxy
+  when: "'k8s_utils' in group_names"
+
+- name: Enable and start HAProxy
+  ansible.builtin.service:
+    name: haproxy
+    enabled: true
+    state: restarted
   when: "'k8s_utils' in group_names"
