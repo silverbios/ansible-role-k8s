@@ -43,5 +43,5 @@
   ansible.builtin.service:
     name: etcd
     enabled: true
-    state: started
+    state: restarted
   when: "'k8s_masters' in group_names"
