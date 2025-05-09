@@ -1,22 +1,46 @@
+- name: Add cilium chart repo
+  become: true
+  become_user: k8s
+  kubernetes.core.helm_repository:
+    name: cilium
+    repo_url: "https://helm.cilium.io/"
+  when: "'k8s_masters' in group_names"
+
 - name: Install cilium Chart
   become: true
   become_user: k8s
   kubernetes.core.helm:
+    update_repo_cache: true
     name: cilium
-    update_repo_cache: True
     namespace: kube-system
     chart_ref: cilium/cilium
     set_values:
       - value: kubeProxyReplacement=true
         value_type: string
-      - value: k8sServiceHost={{ hostvars['Utils01']['ansible_host'] }}
-        value_type: string
-      - value: externalIPs.enabled=true
+      - value: k8sServiceHost={{ hostvars['Utils01-Node']['ansible_host'] }}
         value_type: string
       - value: k8sServicePort=6443
         value_type: string
-      - value: bpf.hostLegacyRouting=false
+      - value: socketLB.hostNamespaceOnly=true
         value_type: string
+      - value: enable-ipv4=true
+      - value: enable-ipv6=true
+      - value: localRedirectPolicy=true
       - value: bpf.masquerade=true
-        value_type: string
+      - value: enableIPv6Masquerade=true
+      - value: cni.exclusive=false
+      - value: l2announcements.enabled=true
+      - value: hostPort.enabled=true
+      - value: istio.enabled=true
+      - value: localRedirectPolicy=true
+  when: inventory_hostname == 'Master01-Node'
+
+#  when: "'k8s_masters' in group_names"
+  
+- name: Extract cilium-cli
+  ansible.builtin.unarchive:
+    src: "{{ cilium_cli_url }}"
+    dest: /usr/local/bin/
+    creates: /usr/local/bin/cilium
+    remote_src: yes
   when: "'k8s_masters' in group_names"
