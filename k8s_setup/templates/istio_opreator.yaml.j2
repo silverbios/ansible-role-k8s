@@ -1,0 +1,13 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: istio-controlplane
+spec:
+  profile: default
+  meshConfig:
+    defaultConfig:
+      interceptionMode: TPROXY
+  components:
+    ingressGateways:
+      - name: istio-ingressgateway
+        enabled: false  # disable Istio ingress gateway to use traefik-v2

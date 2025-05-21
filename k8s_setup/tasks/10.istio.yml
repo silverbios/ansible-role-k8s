@@ -1,0 +1,46 @@
+- name: Download Istio archive
+  ansible.builtin.unarchive:
+    src: "{{ istio_url }}"
+    dest: "/opt/istio/"
+    creates: /opt/istio/bin/istioctl
+    extra_opts: [--strip-components=1]
+  when: "'k8s_masters' in group_names"
+
+- name: Link istioctl to /usr/local/bin
+  file:
+    src: "/opt/istio-{{ istio_version }}/bin/istioctl"
+    dest: "/usr/local/bin/istioctl"
+    state: link
+    force: true
+    mode: '0755'
+  when: "'k8s_masters' in group_names"
+
+- name: Render IstioOperator manifest
+  template:
+    src: istio_operator.yaml.j2
+    dest: /tmp/istio-operator.yaml
+  when: inventory_hostname == 'Master01-Node'
+
+- name: Install Istio with custom operator
+  ansible.builtin.command: >
+    istioctl install -y -f /tmp/istio-operator.yaml
+  args:
+    creates: /opt/istio/installed
+  when: inventory_hostname == 'Master01-Node'
+
+- name: Mark Istio as installed
+  file:
+    path: /etc/istio/installed
+    state: touch
+  when: inventory_hostname == 'Master01-Node'
+
+- name: Enable sidecar injection for Default Namespace
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: default
+    definition:
+      metadata:
+        labels:
+          istio-injection: enabled
+  when: inventory_hostname == 'Master01-Node'
