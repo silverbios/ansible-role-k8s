@@ -1,6 +1,5 @@
 ---
 # vars file for k8s_setup
-
 architecture: "amd64"
 
 cfssl_version: "1.6.5"
@@ -9,7 +8,7 @@ cfssl_download_url: "https://github.com/cloudflare/cfssl/releases/download/v{{ c
 
 cfssljson_download_url: "https://github.com/cloudflare/cfssl/releases/download/v{{ cfssl_version }}/cfssljson_{{ cfssl_version }}_linux_{{ architecture }}"
 
-etcd_version: "3.5.21"
+etcd_version: "3.6.0"
 
 etcd_client_port: "2379"
 
@@ -35,11 +34,13 @@ k8s_repo_version: "v1.33"
 
 frontend_bind_port: "6443"
 
-k8s_version: "1.33.0-1.1"
+k8s_version: "1.33.1-1.1"
 
 k8s_subnet: "10.255.0.0/16"
 
 k8s_serviceSubnet: "10.254.0.0/16"
+
+cilium_chart_version: "1.17.4"
 
 cilium_cli_version: "v0.18.3"
 
@@ -51,10 +52,12 @@ lb_range_start: "192.168.100.101" # Update this based on you physical free range
 
 lb_range_stop: "192.168.100.105" # Update this based on you physical free range in your subent
 
-istio_version: "1.25.2"
+istio_version: "1.26.0"
 
 istio_arch: "x86_64"
 
 istio_platform: "linux"
 
 istio_url: "https://github.com/istio/istio/releases/download/{{ istio_version }}/istio-{{ istio_version }}-{{ istio_platform }}-{{ istio_arch }}.tar.gz"
+
+openebs_chart_version: 4.2.0"
